@@ -129,8 +129,11 @@ export CLAUDE_BRIDGE_DIR="$BRIDGE_DIR"
 
 # 添加 cron（去重）
 CRON_CMD="CLAUDE_BRIDGE_DIR=$BRIDGE_DIR $BRIDGE_DIR/cron_runner.sh"
-(crontab -l 2>/dev/null | grep -v claude-bridge; echo "* * * * * $CRON_CMD") | crontab -
-echo "  cron 已配置 (每15秒轮询 + 自动重启)"
+if (crontab -l 2>/dev/null | grep -v claude-bridge; echo "* * * * * $CRON_CMD") | crontab - 2>/dev/null; then
+    echo "  cron 已配置 (每15秒轮询 + 自动重启)"
+else
+    echo "  ⚠️ cron 不可用，跳过。worker 依赖 hook 心跳，掉线会 Telegram 通知你手动重启。"
+fi
 
 # === 6. 部署 CLAUDE.md ===
 echo "[6/7] 部署 CLAUDE.md..."
