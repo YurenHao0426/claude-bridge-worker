@@ -16,6 +16,11 @@ while IFS=$'\t' read -r SESSION PROJECT_DIR; do
     [ -z "$SESSION" ] && continue
     tmux has-session -t "$SESSION" 2>/dev/null || continue
 
+    # 发心跳（每次 poll 都发，不依赖 Claude 活跃）
+    curl -sf -X POST -H "Authorization: Bearer $API_SECRET" -H "Content-Type: application/json" \
+        -d "{\"session\": \"$SESSION\", \"host\": \"$(hostname)\"}" \
+        "$BROKER_URL/heartbeat" >/dev/null 2>&1 || true
+
     COUNT=$(curl -sf -H "Authorization: Bearer $API_SECRET" \
         "$BROKER_URL/tasks/pending?target=$SESSION" 2>/dev/null \
         | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('tasks',[])))" 2>/dev/null \
