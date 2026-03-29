@@ -62,7 +62,7 @@ echo "  文件已安装到 $BRIDGE_DIR"
 
 # === 2. 安装 Python 依赖 ===
 echo "[2/7] 安装 Python 依赖..."
-pip install httpx "mcp[cli]" 2>&1 | tail -1
+pip install httpx "mcp[cli]" 2>&1 | tail -1 || echo "  ⚠️ pip 安装失败，请手动安装: pip install httpx 'mcp[cli]'"
 
 # === 3. 注册 MCP server ===
 echo "[3/7] 注册 MCP server..."
