@@ -132,14 +132,31 @@ CRON_CMD="CLAUDE_BRIDGE_DIR=$BRIDGE_DIR $BRIDGE_DIR/cron_runner.sh"
 (crontab -l 2>/dev/null | grep -v claude-bridge; echo "* * * * * $CRON_CMD") | crontab -
 echo "  cron 已配置 (每15秒轮询 + 自动重启)"
 
-# === 6. 复制 CLAUDE.md ===
+# === 6. 部署 CLAUDE.md ===
 echo "[6/7] 部署 CLAUDE.md..."
-cp "$BRIDGE_DIR/CLAUDE.md" "$HOME/CLAUDE.md" 2>/dev/null || true
+# 全局位置：直接覆盖（这里不会有项目描述）
+mkdir -p "$HOME/.claude"
 cp "$BRIDGE_DIR/CLAUDE.md" "$HOME/.claude/CLAUDE.md" 2>/dev/null || true
+
+# 项目目录：如果已有 CLAUDE.md 则追加，不覆盖
 if [ -d "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "$HOME" ]; then
-    cp "$BRIDGE_DIR/CLAUDE.md" "$PROJECT_DIR/CLAUDE.md" 2>/dev/null || true
+    if [ -f "$PROJECT_DIR/CLAUDE.md" ]; then
+        # 检查是否已经包含 bridge 内容
+        if ! grep -q "Claude Bridge" "$PROJECT_DIR/CLAUDE.md" 2>/dev/null; then
+            echo "" >> "$PROJECT_DIR/CLAUDE.md"
+            echo "---" >> "$PROJECT_DIR/CLAUDE.md"
+            echo "" >> "$PROJECT_DIR/CLAUDE.md"
+            cat "$BRIDGE_DIR/CLAUDE.md" >> "$PROJECT_DIR/CLAUDE.md"
+            echo "  已追加 bridge 指令到 $PROJECT_DIR/CLAUDE.md"
+        else
+            echo "  $PROJECT_DIR/CLAUDE.md 已包含 bridge 指令，跳过"
+        fi
+    else
+        cp "$BRIDGE_DIR/CLAUDE.md" "$PROJECT_DIR/CLAUDE.md"
+        echo "  已创建 $PROJECT_DIR/CLAUDE.md"
+    fi
 fi
-echo "  CLAUDE.md 已部署到 home 和项目目录"
+echo "  全局 CLAUDE.md 已部署到 ~/.claude/"
 
 # === 7. 启动 tmux session + Claude Code ===
 echo "[7/7] 启动 worker..."
@@ -151,7 +168,7 @@ else
         tmux send-keys -t "$SESSION_NAME" "cd $PROJECT_DIR" Enter
         sleep 1
     fi
-    tmux send-keys -t "$SESSION_NAME" "claude" Enter
+    tmux send-keys -t "$SESSION_NAME" "claude --continue" Enter
     echo "  tmux session '$SESSION_NAME' 已创建并启动 Claude Code"
 fi
 
