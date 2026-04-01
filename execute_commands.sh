@@ -28,7 +28,7 @@ for cmd in d.get('commands', []):
     if [ "$ACTION" = "create_worker" ]; then
         CMD_HOST=$(echo "$PARAMS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('host',''))" 2>/dev/null)
         MY_HOST=$(hostname)
-        if [ -n "$CMD_HOST" ] && [ "$CMD_HOST" != "$MY_HOST" ]; then
+        if [ -n "$CMD_HOST" ] && [[ "$MY_HOST" != "$CMD_HOST"* ]] && [[ "$CMD_HOST" != "$MY_HOST"* ]]; then
             echo "$(date): Skipping $CMD_ID - host $CMD_HOST != $MY_HOST"
             continue
         fi
