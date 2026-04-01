@@ -24,12 +24,30 @@ for cmd in d.get('commands', []):
 
     echo "$(date): Executing command $CMD_ID: $ACTION on $TARGET"
 
+    # 只执行属于本机的命令（target 在 .sessions 里，或者 create_worker 的 host 匹配）
+    if [ "$ACTION" = "create_worker" ]; then
+        CMD_HOST=$(echo "$PARAMS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('host',''))" 2>/dev/null)
+        MY_HOST=$(hostname)
+        if [ -n "$CMD_HOST" ] && [ "$CMD_HOST" != "$MY_HOST" ]; then
+            echo "$(date): Skipping $CMD_ID - host $CMD_HOST != $MY_HOST"
+            continue
+        fi
+    else
+        if ! grep -q "^${TARGET}$(printf '\t')" "$SCRIPT_DIR/.sessions" 2>/dev/null; then
+            echo "$(date): Skipping $CMD_ID - $TARGET not in local .sessions"
+            continue
+        fi
+    fi
+
     # 检查 tmux session 存在
-    if ! tmux has-session -t "$TARGET" 2>/dev/null; then
-        curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
-            -d "{\"result\": \"ERROR: tmux session $TARGET not found\"}" \
-            "$BROKER_URL/commands/$CMD_ID/done" >/dev/null 2>&1
-        continue
+    # create_worker 不需要 session 已存在
+    if [ "$ACTION" != "create_worker" ]; then
+        if ! tmux has-session -t "$TARGET" 2>/dev/null; then
+            curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
+                -d "{\"result\": \"ERROR: tmux session $TARGET not found\"}" \
+                "$BROKER_URL/commands/$CMD_ID/done" >/dev/null 2>&1
+            continue
+        fi
     fi
 
     case "$ACTION" in
@@ -73,6 +91,30 @@ for cmd in d.get('commands', []):
             sleep 3
 
             RESULT="OK: $TARGET restarted"
+            ;;
+
+        create_worker)
+            SESSION_NAME=$(echo "$PARAMS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_name',''))")
+            DIR=$(echo "$PARAMS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('path',''))")
+            SLACK_CH=$(echo "$PARAMS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('slack_channel',''))")
+            if [ -z "$SESSION_NAME" ] || [ -z "$DIR" ]; then
+                RESULT="ERROR: missing session_name or path"
+            elif tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+                RESULT="OK: session $SESSION_NAME already exists"
+            else
+                # 用交互式脚本创建，自动处理弹窗
+                RESULT=$(bash "$SCRIPT_DIR/create_worker.sh" "$SESSION_NAME" "$DIR" "$BROKER_URL" "$API_SECRET" "$SLACK_CH" 2>&1 | tail -1)
+            fi
+            ;;
+
+        stop)
+            tmux send-keys -t "$TARGET" "/exit" Enter
+            sleep 3
+            tmux kill-session -t "$TARGET" 2>/dev/null || true
+            # 从 .sessions 移除
+            grep -v "^${TARGET}$(printf '\t')" "$SCRIPT_DIR/.sessions" > "${SCRIPT_DIR}/.sessions.tmp" 2>/dev/null || true
+            mv "${SCRIPT_DIR}/.sessions.tmp" "$SCRIPT_DIR/.sessions"
+            RESULT="OK: $TARGET stopped and removed"
             ;;
 
         *)
