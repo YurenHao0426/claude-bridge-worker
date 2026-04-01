@@ -89,7 +89,7 @@ try:
 
     # Hook 被触发了 = Claude 在活跃状态，可以消费 messages
     for m in messages:
-        output_lines.append(f"[Bridge btw 请用reply_to_dispatcher回复] {m['content']}")
+        output_lines.append(f"[Bridge btw — reply with reply_to_dispatcher] {m['content']}")
         consume_task(m["id"])
 
     if event == "Stop" and tasks:
@@ -98,10 +98,10 @@ try:
         )
         if output_lines:
             output_lines.append("")
-        output_lines.append(f"有 {len(tasks)} 个新任务等待执行:")
+        output_lines.append(f"{len(tasks)} new task(s) pending:")
         output_lines.append(task_list)
         output_lines.append("")
-        output_lines.append("请用 fetch_pending_tasks 获取完整信息，claim_task 领取并执行。")
+        output_lines.append("Use fetch_pending_tasks to view details, then claim_task to claim and execute.")
         output = {
             "decision": "block",
             "reason": "\n".join(output_lines),
@@ -112,7 +112,7 @@ try:
             [f"  - [{t['id']}] {t['content'][:120]}" for t in tasks]
         )
         output_lines.append(
-            f"\n[Bridge 提示] 有 {len(tasks)} 个新任务，当前工作完成后请处理:\n{task_list}"
+            f"\n[Bridge] {len(tasks)} new task(s) pending. Handle after current work:\n{task_list}"
         )
         print("\n".join(output_lines))
     elif output_lines:

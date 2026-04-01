@@ -18,7 +18,7 @@ If background tasks are running (e.g., experiments), let them continue, but you 
 
 ## Replying to Messages
 
-- `[Bridge btw 请用reply_to_dispatcher回复]` → **must reply using `reply_to_dispatcher`**
+- `[Bridge btw reply with reply_to_dispatcher]` → **must reply using `reply_to_dispatcher`**
 - `[from Slack ... reply with reply_to_slack]` → **must reply using `reply_to_slack`**
 - Direct text output is invisible to dispatch/Slack — only tool calls deliver messages
 - Use `get_slack_channel_history` if you need context from previous Slack conversation
